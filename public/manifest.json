@@ -1,0 +1,21 @@
+{
+  "name": "Push Notification React App",
+  "short_name": "PushApp",
+  "description": "A React App for testing Push Notifications across platforms",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/iod.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/iod.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

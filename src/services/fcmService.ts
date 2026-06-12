@@ -9,6 +9,11 @@ export const getFCMToken = async () => {
       return null;
     }
 
+    if (!('serviceWorker' in navigator)) {
+      console.warn("Service workers are not supported in this browser.");
+      return null;
+    }
+
     // Register service worker with config to avoid hardcoding in sw file
     const config = encodeURIComponent(JSON.stringify(firebaseConfig));
     const registration = await navigator.serviceWorker.register(

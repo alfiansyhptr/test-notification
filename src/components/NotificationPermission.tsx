@@ -2,7 +2,18 @@ import React from 'react';
 import { useFCM } from '../hooks/useFCM';
 
 export const NotificationPermission: React.FC = () => {
-  const { permission, requestPermission, token, error } = useFCM();
+  const { permission, requestPermission, token, error, isSupported } = useFCM();
+
+  if (!isSupported) {
+    return (
+      <div className="p-6 border border-gray-200 rounded-lg shadow-sm bg-white mb-6">
+        <h3 className="text-xl font-bold mb-4 text-gray-800">Notification Settings</h3>
+        <div className="text-yellow-700 mt-3 text-sm bg-yellow-50 p-3 rounded">
+          Push notifications are not supported in this browser or device. On iOS, you may need to add this app to your Home Screen or update to a newer iOS version.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 border border-gray-200 rounded-lg shadow-sm bg-white mb-6">
@@ -13,6 +24,7 @@ export const NotificationPermission: React.FC = () => {
           {permission}
         </span>
       </div>
+
       
       {permission !== 'granted' && (
         <button 
