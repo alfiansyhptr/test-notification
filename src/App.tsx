@@ -8,8 +8,8 @@ function App() {
     // 1. Tangkap klik dari background (Jendela baru dibuka oleh SW)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('fcm_click') === 'true') {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ 
+      (window as any).dataLayer = (window as any).dataLayer || [];
+      (window as any).dataLayer.push({ 
         event: 'notification_open',
         message_id: urlParams.get('message_id') || '',
         message_name: urlParams.get('message_name') || '',
@@ -32,12 +32,16 @@ function App() {
         const payload = event.data.payload || {};
         const payloadData = payload.data || {};
         
-        window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push({ 
+        const message_id = payload.messageId || (payload as any).fcmMessageId || '';
+        const message_name = payloadData['google.c.a.c_l'] || '';
+        const message_time = payloadData['google.c.a.ts'] || '';
+        
+        (window as any).dataLayer = (window as any).dataLayer || [];
+        (window as any).dataLayer.push({ 
           event: 'notification_open',
-          message_id: payload.messageId || payload.fcmMessageId || '',
-          message_name: payloadData['google.c.a.c_l'] || '',
-          message_time: payloadData['google.c.a.ts'] || '',
+          message_id,
+          message_name,
+          message_time,
           message_device_time: new Date().toISOString()
         });
 

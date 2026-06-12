@@ -11,13 +11,13 @@ export const onForegroundMessage = async (callback: (payload: any) => void) => {
       
       // Ambil metadata pesan
       const payloadData = payload.data || {};
-      const message_id = payload.messageId || payload.fcmMessageId || '';
+      const message_id = payload.messageId || (payload as any).fcmMessageId || '';
       const message_name = payloadData['google.c.a.c_l'] || '';
       const message_time = payloadData['google.c.a.ts'] || '';
 
       // Push ke DataLayer untuk tracking kustom
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ 
+      (window as any).dataLayer = (window as any).dataLayer || [];
+      (window as any).dataLayer.push({ 
         event: 'notification_foreground',
         message_id: message_id,
         message_name: message_name,
