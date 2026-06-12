@@ -63,7 +63,7 @@ export const CarCard: React.FC<CarCardProps> = ({ car }) => {
                 (window as any).dataLayer = (window as any).dataLayer || [];
                 (window as any).dataLayer.push({
                   event: "general_event",
-                  event_name: car.name
+                  event_name: car.name.toLowerCase().replace(/\s+/g, '_')
                 });
               }
             }}
