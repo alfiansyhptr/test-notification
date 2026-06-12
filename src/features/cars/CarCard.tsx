@@ -55,7 +55,19 @@ export const CarCard: React.FC<CarCardProps> = ({ car }) => {
         </div>
         
         <div className="mt-auto pt-4">
-          <Link to={`/cars/${car.id}`} className="block w-full">
+          <Link 
+            to={`/cars/${car.id}`} 
+            className="block w-full"
+            onClick={() => {
+              if (car.status === 'available') {
+                (window as any).dataLayer = (window as any).dataLayer || [];
+                (window as any).dataLayer.push({
+                  event: "general_event",
+                  event_name: car.name
+                });
+              }
+            }}
+          >
             <Button className="w-full" variant={car.status === 'available' ? 'primary' : 'secondary'} disabled={car.status !== 'available'}>
               {car.status === 'available' ? 'View Details' : 'Unavailable'}
             </Button>
