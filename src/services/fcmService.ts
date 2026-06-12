@@ -1,5 +1,5 @@
 import { getToken } from "firebase/messaging";
-import { messaging, firebaseConfig } from "../config/firebase";
+import { messaging } from "../config/firebase";
 
 export const getFCMToken = async () => {
   try {
@@ -14,11 +14,15 @@ export const getFCMToken = async () => {
       return null;
     }
 
-    // Register service worker with config to avoid hardcoding in sw file
-    const config = encodeURIComponent(JSON.stringify(firebaseConfig));
+    // Register service worker (parameter config sudah tidak diperlukan untuk Vanilla SW)
     const registration = await navigator.serviceWorker.register(
-      `/firebase-messaging-sw.js?config=${config}`
+      `/firebase-messaging-sw.js`
     );
+
+    // Memaksa browser mengecek pembaruan Service Worker setiap kali aplikasi dimuat
+    if (registration) {
+      registration.update();
+    }
 
     const token = await getToken(msg, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,

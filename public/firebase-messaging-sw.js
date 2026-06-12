@@ -17,18 +17,35 @@ self.addEventListener('push', (event) => {
   try {
     const payload = event.data.json();
     
-    // Ambil data dari payload standar FCM
-    const notification = payload.notification || {};
-    
-    const title = notification.title || 'New Notification';
-    const options = {
-      body: notification.body || '',
-      icon: notification.icon || '/iod.png',
-      data: payload // Simpan full payload untuk event click
-    };
-
     event.waitUntil(
-      self.registration.showNotification(title, options)
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        // Cek apakah ada tab aplikasi yang sedang aktif (focused)
+        const focusedClient = clientList.find(c => c.focused);
+        
+        if (focusedClient) {
+          // Jika aplikasi sedang dibuka (foreground), kirim pesan ke UI
+          // agar UI memunculkan Toast Notification dan dataLayer
+          focusedClient.postMessage({
+            type: 'FCM_FOREGROUND_MESSAGE',
+            payload: payload
+          });
+          
+          // Mencegah system notification muncul agar tidak double dengan UI Toast
+          return Promise.resolve();
+        }
+        
+        // Jika aplikasi di background, munculkan System Notification kustom kita
+        const notification = payload.notification || {};
+        const title = notification.title || 'New Notification';
+        const options = {
+          body: notification.body || '',
+          icon: notification.icon || '/iod.png',
+          requireInteraction: true, // Membuat notifikasi tidak hilang otomatis sampai diklik/diclose
+          data: payload // Simpan full payload untuk event click
+        };
+
+        return self.registration.showNotification(title, options);
+      })
     );
   } catch (err) {
     console.error('Error parsing push payload', err);

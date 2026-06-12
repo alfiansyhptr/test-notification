@@ -23,24 +23,24 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const addNotification = (notif: Omit<NotificationPayload, "id" | "read">) => {
+  const addNotification = React.useCallback((notif: Omit<NotificationPayload, "id" | "read">) => {
     const newNotification: NotificationPayload = {
       ...notif,
       id: Date.now().toString(),
       read: false,
     };
     setNotifications((prev) => [newNotification, ...prev]);
-  };
+  }, []);
 
-  const markAsRead = (id: string) => {
+  const markAsRead = React.useCallback((id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
-  };
+  }, []);
 
-  const clearNotifications = () => {
+  const clearNotifications = React.useCallback(() => {
     setNotifications([]);
-  };
+  }, []);
 
   return (
     <NotificationContext.Provider

@@ -1,17 +1,13 @@
-import { onMessage } from "firebase/messaging";
-import { messaging } from "../config/firebase";
 
-export const onForegroundMessage = async (callback: (payload: any) => void) => {
-  try {
-    const msg = await messaging();
-    if (!msg) return null;
-
-    return onMessage(msg, (payload) => {
+export const onForegroundMessage = (callback: (payload: any) => void) => {
+  const handleMessage = (event: MessageEvent) => {
+    if (event.data && event.data.type === 'FCM_FOREGROUND_MESSAGE') {
+      const payload = event.data.payload;
       console.log("Message received in foreground: ", payload);
       
       // Ambil metadata pesan
       const payloadData = payload.data || {};
-      const message_id = payload.messageId || (payload as any).fcmMessageId || '';
+      const message_id = payload.messageId || payload.fcmMessageId || payloadData.message_id || '';
       const message_name = payloadData['google.c.a.c_l'] || '';
       const message_time = payloadData['google.c.a.ts'] || '';
 
@@ -26,9 +22,17 @@ export const onForegroundMessage = async (callback: (payload: any) => void) => {
       });
 
       callback(payload);
-    });
-  } catch (error) {
-    console.error("Failed to initialize foreground message listener", error);
-    return null;
+    }
+  };
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', handleMessage);
   }
+
+  // Return a cleanup function
+  return () => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    }
+  };
 };
