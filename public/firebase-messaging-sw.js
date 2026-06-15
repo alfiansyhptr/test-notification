@@ -16,12 +16,12 @@ self.addEventListener('push', (event) => {
 
   try {
     const payload = event.data.json();
-    
+
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         // Cek apakah ada tab aplikasi yang sedang aktif (focused)
         const focusedClient = clientList.find(c => c.focused);
-        
+
         if (focusedClient) {
           // Jika aplikasi sedang dibuka (foreground), kirim pesan ke UI
           // agar UI memunculkan Toast Notification dan dataLayer
@@ -29,17 +29,18 @@ self.addEventListener('push', (event) => {
             type: 'FCM_FOREGROUND_MESSAGE',
             payload: payload
           });
-          
+
           // Mencegah system notification muncul agar tidak double dengan UI Toast
           return Promise.resolve();
         }
-        
+
         // Jika aplikasi di background, munculkan System Notification kustom kita
         const notification = payload.notification || {};
         const title = notification.title || 'New Notification';
         const options = {
           body: notification.body || '',
           icon: notification.icon || '/iod.png',
+          image: notification.image, // Menarik URL gambar banner dari Firebase
           requireInteraction: true, // Membuat notifikasi tidak hilang otomatis sampai diklik/diclose
           data: payload // Simpan full payload untuk event click
         };
@@ -91,7 +92,7 @@ self.addEventListener('notificationclick', (event) => {
           }
         }
         client.focus();
-        
+
         // Gunakan API native Service Worker untuk mengalihkan URL tab yang sedang terbuka
         if ('navigate' in client) {
           return client.navigate(urlToOpen.href);
@@ -101,7 +102,7 @@ self.addEventListener('notificationclick', (event) => {
           return;
         }
       }
-      
+
       // Buka window baru ke target URL jika belum ada tab terbuka
       return clients.openWindow(urlToOpen.href);
     })

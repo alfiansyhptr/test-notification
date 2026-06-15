@@ -60,19 +60,30 @@ export const NotificationToast: React.FC = () => {
   return (
     <div className="fixed top-4 right-4 z-50 transition-all duration-300 transform translate-y-0 opacity-100">
       <div 
-        className="bg-white border-l-4 border-blue-500 shadow-xl rounded-md p-4 min-w-[300px] max-w-sm flex items-start space-x-3 cursor-pointer" 
+        className="bg-white border-l-4 border-blue-500 shadow-xl rounded-md p-4 min-w-[300px] max-w-sm flex flex-col items-start cursor-pointer" 
         onClick={handleToastClick}
       >
-        <div className="flex-1">
-          <h4 className="font-bold text-gray-800">{toastNotif.title}</h4>
-          <p className="text-sm text-gray-600 mt-1">{toastNotif.body}</p>
+        <div className="flex w-full items-start space-x-3">
+          <div className="flex-1">
+            <h4 className="font-bold text-gray-800">{toastNotif.title}</h4>
+            <p className="text-sm text-gray-600 mt-1">{toastNotif.body}</p>
+          </div>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setToastNotif(null); }}
+            className="text-gray-400 hover:text-gray-600 focus:outline-none"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
-        <button 
-          onClick={(e) => { e.stopPropagation(); setToastNotif(null); }}
-          className="text-gray-400 hover:text-gray-600 focus:outline-none"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
+        {toastNotif.payload?.notification?.image && (
+          <div className="mt-3 w-full">
+            <img 
+              src={toastNotif.payload.notification.image} 
+              alt="Notification Banner" 
+              className="w-full h-auto rounded-md object-cover max-h-40" 
+            />
+          </div>
+        )}
       </div>
     </div>
   );
