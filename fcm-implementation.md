@@ -357,3 +357,24 @@ To ensure *dataLayer* tracking and *redirects* function optimally, when creating
 | `google.c.a.ts` | `171818222` | (Optional) Automatically filled by the Firebase time system. |
 
 *(By including `link` inside the Custom Data, both the Service Worker and the Toast component can read the destination route before injecting it with tracking parameters).*
+
+---
+
+## 4. Limitations
+
+While this "Vanilla" approach solves the double-notification bug and provides robust data tracking, there are a few limitations to keep in mind:
+
+1. **iOS/Safari Web Push Restrictions:** Web Push on iOS/Safari is strictly governed by Apple's policies. It requires iOS 16.4+ and often requires the user to install the Web App to their Home Screen (PWA) before push notifications can be authorized and received.
+2. **Loss of Default FCM Analytics:** By dropping the `firebase-messaging-compat` SDK from the Service Worker, we lose Firebase's automatic internal "Message Delivered" telemetry to the FCM console dashboard. We compensate for this by firing explicit `notification_open` and `notification_foreground` events directly to GTM/GA4.
+3. **Browser Definitions of "Focused":** The Service Worker decides whether to show a System Notification or an In-App Toast based on whether the `WindowClient` is focused. If a user minimizes the browser window without switching tabs, some browsers might still consider the tab "focused", meaning the user will only receive the In-App Toast (which they can't see) instead of a System Notification.
+4. **Cross-Tab Behavior:** If the user has multiple tabs of the application open, the Service Worker broadcasts the `FCM_FOREGROUND_MESSAGE` to the focused tab, or loops through them. Edge cases might occur where the UI Toast appears on a specific tab instead of all of them.
+
+---
+
+## 5. Summary
+
+This custom Vanilla FCM implementation was built to bridge the gap between standard Firebase Web Push and enterprise-level tracking needs. By taking manual control of the Service Worker's `push` and `notificationclick` events, we successfully:
+* Eliminated the persistent **Double Notification** bug caused by the Firebase SDK.
+* Created a seamless **In-App Toast UI** for foreground notifications that doesn't conflict with OS notifications.
+* Guaranteed that **UTM tracking links** (`fcm_click`, `message_id`, etc.) are reliably stitched into the URL regardless of whether the user clicked from the background or foreground.
+* Integrated perfectly with **Google Tag Manager (GTM)**, ensuring that every interaction (`notification_open` and `notification_foreground`) is captured precisely for marketing attribution.
