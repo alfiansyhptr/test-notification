@@ -1,50 +1,50 @@
-# Panduan Implementasi Firebase Cloud Messaging (FCM)
+# Firebase Cloud Messaging (FCM) Implementation Guide
 
-Dokumen ini menjelaskan arsitektur dan langkah demi langkah implementasi Firebase Cloud Messaging (FCM) pada proyek React ini. Implementasi ini dirancang khusus untuk mendukung **kustomisasi ikon**, **pengalihan link (redirect)**, dan **pelacakan Google Tag Manager (GTM)** secara murni (Vanilla) untuk mencegah masalah *double notification* bawaan dari SDK Firebase.
-
----
-
-## Daftar Isi
-1. [Arsitektur Umum](#1-arsitektur-umum)
-2. [Langkah Implementasi & Contoh Skrip](#2-langkah-implementasi--contoh-skrip)
-   - [Tahap 1: Service Worker (Background)](#tahap-1-vanilla-service-worker-background-publicfirebase-messaging-swjs)
-   - [Tahap 2: Service Penanganan Pesan Foreground](#tahap-2-service-penanganan-pesan-foreground-srcservicesnotificationservicets)
-   - [Tahap 3: UI Toast Notification (Foreground)](#tahap-3-ui-toast-notification-foreground-srccomponentsnotificationtoasttsx)
-   - [Tahap 4: Penangkapan Parameter & DataLayer (App.tsx)](#tahap-4-penangkapan-parameter--datalayer-srcapptsx)
-3. [Format Custom Data (Firebase Console)](#3-format-custom-data-firebase-console)
+This document explains the architecture and step-by-step implementation of Firebase Cloud Messaging (FCM) in this React project. This implementation is specifically designed to support **icon customization**, **link redirection**, and **Google Tag Manager (GTM) tracking** natively (Vanilla) to prevent the *double notification* issue inherent to the Firebase SDK.
 
 ---
 
-## 1. Arsitektur Umum
-
-Sistem notifikasi pada aplikasi ini dibagi menjadi dua skenario utama berdasarkan status aplikasi (*Foreground* vs *Background*):
-
-1. **Aplikasi Tertutup / Background**:
-   - Ditangani sepenuhnya oleh `firebase-messaging-sw.js` (Vanilla Web Push).
-   - Memunculkan *System Notification* bawaan OS (Windows/Mac/Android).
-   - Ketika diklik, Service Worker akan memaksa browser membuka/mengalihkan tab ke URL tujuan dengan membawa parameter rahasia `?fcm_click=true`.
-   - Menghasilkan event dataLayer `notification_open`.
-
-2. **Aplikasi Terbuka / Foreground**:
-   - Ditangani oleh Service Worker yang mendeteksi bahwa tab sedang aktif.
-   - Service Worker **tidak** memunculkan notifikasi OS, melainkan mengirim "Sinyal/Pesan" ke React.
-   - React memunculkan komponen *UI Toast Notification* di pojok layar.
-   - Menghasilkan event dataLayer `notification_foreground` seketika.
-   - Jika Toast diklik, terjadi pengalihan halaman dengan parameter `?fcm_click=true` yang akan berujung pada event `notification_open`.
+## Table of Contents
+1. [General Architecture](#1-general-architecture)
+2. [Implementation Steps & Code Examples](#2-implementation-steps--code-examples)
+   - [Step 1: Vanilla Service Worker (Background)](#step-1-vanilla-service-worker-background-publicfirebase-messaging-swjs)
+   - [Step 2: Foreground Message Handling Service](#step-2-foreground-message-handling-service-srcservicesnotificationservicets)
+   - [Step 3: UI Toast Notification (Foreground)](#step-3-ui-toast-notification-foreground-srccomponentsnotificationtoasttsx)
+   - [Step 4: Parameter Interception & DataLayer (App.tsx)](#step-4-parameter-interception--datalayer-srcapptsx)
+3. [Custom Data Format (Firebase Console)](#3-custom-data-format-firebase-console)
 
 ---
 
-## 2. Langkah Implementasi & Contoh Skrip
+## 1. General Architecture
 
-### Tahap 1: Vanilla Service Worker (Background) (`public/firebase-messaging-sw.js`)
-File ini adalah inti dari operasi *background*.
-*   **Mengapa Vanilla?** Kita **tidak** mengimpor `firebase-messaging-compat.js` di file ini untuk mencegah SDK Firebase memunculkan notifikasi otomatis secara paksa yang menyebabkan masalah *Double Notification*.
-*   `self.addEventListener('push')`: Menangkap push masuk. Jika tab sedang aktif, kirim `postMessage` ke React. Jika tidak, munculkan notifikasi sistem dengan properti `requireInteraction: true` (agar tidak hilang otomatis).
-*   `self.addEventListener('notificationclick')`: Menangani klik pada notifikasi OS, menyisipkan parameter ke URL (`fcm_click=true`), dan menggunakan `client.navigate()` untuk merutekan tab yang terbuka.
+The notification system in this application is divided into two main scenarios based on the application state (*Foreground* vs *Background*):
 
-**Kode Penuh (`public/firebase-messaging-sw.js`):**
+1. **App Closed / Background**:
+   - Handled entirely by `firebase-messaging-sw.js` (Vanilla Web Push).
+   - Triggers the native *System Notification* of the OS (Windows/Mac/Android).
+   - When clicked, the Service Worker forces the browser to open/redirect a tab to the destination URL while carrying the secret parameter `?fcm_click=true`.
+   - Generates the `notification_open` dataLayer event.
+
+2. **App Open / Foreground**:
+   - Handled by the Service Worker detecting that the tab is currently active.
+   - The Service Worker **does not** trigger an OS notification; instead, it sends a "Signal/Message" to React.
+   - React displays the *UI Toast Notification* component in the corner of the screen.
+   - Immediately generates the `notification_foreground` dataLayer event.
+   - If the Toast is clicked, a page redirect occurs with the `?fcm_click=true` parameter, which ultimately leads to the `notification_open` event.
+
+---
+
+## 2. Implementation Steps & Code Examples
+
+### Step 1: Vanilla Service Worker (Background) (`public/firebase-messaging-sw.js`)
+This file is the core of the *background* operation.
+*   **Why Vanilla?** We **do not** import `firebase-messaging-compat.js` in this file to prevent the Firebase SDK from forcefully showing automatic notifications, which causes the *Double Notification* issue.
+*   `self.addEventListener('push')`: Catches incoming pushes. If the tab is active, send a `postMessage` to React. If not, show the system notification with the `requireInteraction: true` property (so it doesn't disappear automatically).
+*   `self.addEventListener('notificationclick')`: Handles clicks on the OS notification, injects parameters into the URL (`fcm_click=true`), and uses `client.navigate()` to route the open tab.
+
+**Full Code (`public/firebase-messaging-sw.js`):**
 ```javascript
-// Menggunakan Vanilla Service Worker untuk mencegah Firebase SDK memunculkan double notification
+// Use a Vanilla Service Worker to prevent the Firebase SDK from showing double notifications
 
 self.addEventListener('install', (event) => {
   console.log('FCM Service worker installing...');
@@ -55,7 +55,7 @@ self.addEventListener('activate', (event) => {
   console.log('FCM Service worker activating...');
 });
 
-// Tangani push secara manual agar kita bisa mengontrol icon dan mencegah duplikasi
+// Handle push manually so we can control the icon and prevent duplication
 self.addEventListener('push', (event) => {
   console.log('[firebase-messaging-sw.js] Push Received.');
   if (!event.data) return;
@@ -65,30 +65,30 @@ self.addEventListener('push', (event) => {
     
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-        // Cek apakah ada tab aplikasi yang sedang aktif (focused)
+        // Check if there is an active (focused) application tab
         const focusedClient = clientList.find(c => c.focused);
         
         if (focusedClient) {
-          // Jika aplikasi sedang dibuka (foreground), kirim pesan ke UI
-          // agar UI memunculkan Toast Notification dan dataLayer
+          // If the application is open (foreground), send a message to the UI
+          // so the UI can display the Toast Notification and dataLayer
           focusedClient.postMessage({
             type: 'FCM_FOREGROUND_MESSAGE',
             payload: payload
           });
           
-          // Mencegah system notification muncul agar tidak double dengan UI Toast
+          // Prevent the system notification from showing up to avoid doubling with the UI Toast
           return Promise.resolve();
         }
         
-        // Jika aplikasi di background, munculkan System Notification kustom kita
+        // If the application is in the background, show our custom System Notification
         const notification = payload.notification || {};
         const title = notification.title || 'New Notification';
         const options = {
           body: notification.body || '',
           icon: notification.icon || '/iod.png',
-          image: notification.image, // Menarik URL gambar banner dari Firebase
-          requireInteraction: true, // Membuat notifikasi tidak hilang otomatis sampai diklik/diclose
-          data: payload // Simpan full payload untuk event click
+          image: notification.image, // Fetch the banner image URL from Firebase
+          requireInteraction: true, // Make the notification persist until clicked/closed
+          data: payload // Save the full payload for the click event
         };
 
         return self.registration.showNotification(title, options);
@@ -103,14 +103,14 @@ self.addEventListener('notificationclick', (event) => {
   console.log('[firebase-messaging-sw.js] Notification click Received.', event);
   event.notification.close();
 
-  // Karena ini vanilla, data langsung tersedia murni di event.notification.data
+  // Since this is vanilla, the data is available natively in event.notification.data
   const payload = event.notification.data || {};
   const payloadData = payload.data || {};
   const message_id = payload.messageId || payload.fcmMessageId || payloadData.message_id || '';
   const message_name = payloadData['google.c.a.c_l'] || '';
   const message_time = payloadData['google.c.a.ts'] || '';
 
-  // 2. Tentukan URL tujuan dari payload
+  // 2. Determine the destination URL from the payload
   let targetUrl = '/';
   if (payload.fcmOptions && payload.fcmOptions.link) {
     targetUrl = payload.fcmOptions.link;
@@ -120,14 +120,14 @@ self.addEventListener('notificationclick', (event) => {
     targetUrl = payloadData.link;
   }
 
-  // 3. Bangun URL dengan parameter lengkap
+  // 3. Construct the URL with full parameters
   const urlToOpen = new URL(targetUrl, self.location.origin);
   urlToOpen.searchParams.append('fcm_click', 'true');
   urlToOpen.searchParams.append('message_id', message_id);
   urlToOpen.searchParams.append('message_name', message_name);
   urlToOpen.searchParams.append('message_time', message_time);
 
-  // 4. Buka atau alihkan halaman
+  // 4. Open or redirect the page
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       if (clientList.length > 0) {
@@ -139,29 +139,29 @@ self.addEventListener('notificationclick', (event) => {
         }
         client.focus();
         
-        // Gunakan API native Service Worker untuk mengalihkan URL tab yang sedang terbuka
+        // Use the native Service Worker API to redirect the URL of the currently open tab
         if ('navigate' in client) {
           return client.navigate(urlToOpen.href);
         } else {
-          // Fallback darurat
+          // Emergency fallback
           client.postMessage({ type: 'FCM_NAVIGATE', url: urlToOpen.href });
           return;
         }
       }
       
-      // Buka window baru ke target URL jika belum ada tab terbuka
+      // Open a new window to the target URL if no tab is currently open
       return clients.openWindow(urlToOpen.href);
     })
   );
 });
 ```
 
-### Tahap 2: Service Penanganan Pesan Foreground (`src/services/notificationService.ts`)
-File ini bertindak sebagai jembatan antara Service Worker dan React UI saat aplikasi sedang dibuka.
-*   `onForegroundMessage()`: Fungsi ini *listen* (mendengarkan) event pesan `FCM_FOREGROUND_MESSAGE` dari Service Worker.
-*   Menembakkan kode pelacakan `notification_foreground` ke GTM via `window.dataLayer`.
+### Step 2: Foreground Message Handling Service (`src/services/notificationService.ts`)
+This file acts as a bridge between the Service Worker and the React UI when the application is open.
+*   `onForegroundMessage()`: This function listens for the `FCM_FOREGROUND_MESSAGE` event sent by the Service Worker.
+*   Fires the `notification_foreground` tracking code to GTM via `window.dataLayer`.
 
-**Kode Penuh (`src/services/notificationService.ts`):**
+**Full Code (`src/services/notificationService.ts`):**
 ```typescript
 export const onForegroundMessage = (callback: (payload: any) => void) => {
   const handleMessage = (event: MessageEvent) => {
@@ -169,13 +169,13 @@ export const onForegroundMessage = (callback: (payload: any) => void) => {
       const payload = event.data.payload;
       console.log("Message received in foreground: ", payload);
       
-      // Ambil metadata pesan
+      // Extract message metadata
       const payloadData = payload.data || {};
       const message_id = payload.messageId || payload.fcmMessageId || payloadData.message_id || '';
       const message_name = payloadData['google.c.a.c_l'] || '';
       const message_time = payloadData['google.c.a.ts'] || '';
 
-      // Push ke DataLayer untuk tracking kustom
+      // Push to DataLayer for custom tracking
       (window as any).dataLayer = (window as any).dataLayer || [];
       (window as any).dataLayer.push({ 
         event: 'notification_foreground',
@@ -202,12 +202,12 @@ export const onForegroundMessage = (callback: (payload: any) => void) => {
 };
 ```
 
-### Tahap 3: UI Toast Notification (Foreground) (`src/components/NotificationToast.tsx`)
-Komponen visual untuk menggantikan notifikasi sistem ketika pengguna sedang berinteraksi dengan website.
-*   **Karakteristik**: Tidak memiliki *timeout* otomatis, akan terus muncul sampai diklik atau ditutup paksa.
-*   **Fungsi Redirect**: Saat *Toast* diklik, ia memiliki logika kembar seperti Service Worker. Ia mengambil atribut `link`, lalu mengalihkan halaman (`window.location.assign`) dengan menyuntikkan `?fcm_click=true`.
+### Step 3: UI Toast Notification (Foreground) (`src/components/NotificationToast.tsx`)
+A visual component to replace the system notification when the user is interacting with the website.
+*   **Characteristics**: Does not have an automatic timeout; it will remain visible until clicked or manually closed.
+*   **Redirect Function**: When the *Toast* is clicked, it shares the same logic as the Service Worker. It retrieves the `link` attribute, then redirects the page (`window.location.assign`) by injecting `?fcm_click=true`.
 
-**Kode Penuh (`src/components/NotificationToast.tsx`):**
+**Full Code (`src/components/NotificationToast.tsx`):**
 ```tsx
 import React, { useEffect, useState } from 'react';
 import { useNotification } from '../context/NotificationContext';
@@ -224,7 +224,7 @@ export const NotificationToast: React.FC = () => {
       
       addNotification({ title, body, data: payload.data });
       
-      // Tampilkan toast dan simpan payload (tanpa setTimeout agar tidak hilang otomatis)
+      // Display the toast and save the payload (no setTimeout so it doesn't auto-dismiss)
       setToastNotif({ title, body, payload });
     });
     
@@ -246,7 +246,7 @@ export const NotificationToast: React.FC = () => {
     const message_name = payloadData['google.c.a.c_l'] || '';
     const message_time = payloadData['google.c.a.ts'] || '';
 
-    // Tentukan URL tujuan dari payload
+    // Determine the destination URL from the payload
     let targetUrl = '/';
     if (payload.fcmOptions && payload.fcmOptions.link) {
       targetUrl = payload.fcmOptions.link;
@@ -256,7 +256,7 @@ export const NotificationToast: React.FC = () => {
       targetUrl = payloadData.link;
     }
 
-    // Bangun URL dengan parameter lengkap agar dataLayer tertrigger di halaman tujuan
+    // Construct the URL with full parameters so the dataLayer is triggered on the destination page
     const urlToOpen = new URL(targetUrl, window.location.origin);
     urlToOpen.searchParams.append('fcm_click', 'true');
     urlToOpen.searchParams.append('message_id', message_id);
@@ -301,19 +301,19 @@ export const NotificationToast: React.FC = () => {
 };
 ```
 
-### Tahap 4: Penangkapan Parameter & DataLayer (`src/App.tsx`)
-Setiap kali aplikasi React dimuat (baik lewat klik notifikasi *background* maupun klik *Toast* di *foreground*), `App.tsx` akan otomatis membedah URL.
-*   Jika mendeteksi `fcm_click=true`, ia menembakkan `window.dataLayer.push({ event: 'notification_open' })`.
-*   Ia juga menggunakan `window.history.replaceState` untuk menyembunyikan parameter parameter jelek dari URL dan membuatnya rapi kembali.
+### Step 4: Parameter Interception & DataLayer (`src/App.tsx`)
+Every time the React application is loaded (either via a *background* notification click or a *Foreground* Toast click), `App.tsx` will automatically parse the URL.
+*   If it detects `fcm_click=true`, it fires `window.dataLayer.push({ event: 'notification_open' })`.
+*   It also uses `window.history.replaceState` to hide the tracking parameters from the URL and make it look clean again.
 
-**Potongan Kode Utama (`src/App.tsx`):**
+**Main Code Snippet (`src/App.tsx`):**
 ```tsx
 import { useEffect } from 'react';
-// ... import lainnya
+// ... other imports
 
 function App() {
   useEffect(() => {
-    // 1. Tangkap klik dari URL (Pengalihan dari SW atau Toast)
+    // 1. Catch clicks from the URL (Redirections from SW or Toast)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('fcm_click') === 'true') {
       (window as any).dataLayer = (window as any).dataLayer || [];
@@ -325,7 +325,7 @@ function App() {
         message_device_time: new Date().toISOString()
       });
       
-      // Bersihkan URL parameter fcm_click dll agar tidak ter-track dua kali saat di-refresh
+      // Clean up the URL parameters (fcm_click, etc.) to prevent double tracking upon refresh
       urlParams.delete('fcm_click');
       urlParams.delete('message_id');
       urlParams.delete('message_name');
@@ -336,7 +336,7 @@ function App() {
   }, []);
 
   return (
-    // ... layout aplikasi
+    // ... application layout
   );
 }
 
@@ -345,15 +345,15 @@ export default App;
 
 ---
 
-## 3. Format Custom Data (Firebase Console)
+## 3. Custom Data Format (Firebase Console)
 
-Agar pelacakan *dataLayer* dan *redirect* berfungsi maksimal, saat membuat Campaign di Firebase Console, pastikan Anda menggunakan blok **Custom data** di bagian "Additional options" dengan kunci (*Keys*) berikut:
+To ensure *dataLayer* tracking and *redirects* function optimally, when creating a Campaign in the Firebase Console, make sure you use the **Custom data** block in the "Additional options" section with the following *Keys*:
 
-| Key | Value (Contoh) | Keterangan |
+| Key | Value (Example) | Description |
 | :--- | :--- | :--- |
-| `link` | `http://localhost:5173/cars` | Tautan tujuan ke mana user akan dialihkan saat mengklik notifikasi (mendukung parameter UTM). |
-| `message_id` | `promo-ramadhan-1` | ID Unik untuk melacak notifikasi spesifik di Analytics. |
-| `google.c.a.c_l`| `Promo Ramadhan` | (Opsional) Terisi otomatis oleh label campaign Firebase, atau bisa diganti secara manual jika perlu. |
-| `google.c.a.ts` | `171818222` | (Opsional) Terisi otomatis oleh sistem waktu Firebase. |
+| `link` | `http://localhost:5173/cars` | The destination link where the user will be redirected upon clicking the notification (supports UTM parameters). |
+| `message_id` | `promo-ramadhan-1` | A unique ID to track specific notifications in Analytics. |
+| `google.c.a.c_l`| `Promo Ramadhan` | (Optional) Automatically filled by Firebase's campaign label, or can be manually overridden if necessary. |
+| `google.c.a.ts` | `171818222` | (Optional) Automatically filled by the Firebase time system. |
 
-*(Dengan memasukkan `link` di dalam Custom Data, baik Service Worker maupun komponen Toast dapat membaca rute tujuan tersebut sebelum menginjeksinya dengan parameter pelacak).*
+*(By including `link` inside the Custom Data, both the Service Worker and the Toast component can read the destination route before injecting it with tracking parameters).*
